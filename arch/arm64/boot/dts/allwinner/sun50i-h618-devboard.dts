@@ -23,19 +23,6 @@
 		stdout-path = "serial0:115200n8";
 	};
 
-	reserved-memory {
-		/* Override secmon size to 512 KiB as required by board firmware */
-		secmon@40000000 {
-			reg = <0x0 0x40000000 0x0 0x80000>;
-		};
-	};
-
-	de: display-engine {
-		compatible = "allwinner,sun50i-h6-display-engine";
-		allwinner,pipelines = <&mixer0>;
-		status = "okay";
-	};
-
 	connector {
 		compatible = "hdmi-connector";
 		type = "a";
@@ -93,367 +80,6 @@
 	};
 };
 
-/* BSP-specific soc nodes (display, audio, HDMI, GPU, etc.) */
-/ {
-	soc {
-		bus@1000000 {
-			compatible = "allwinner,sun50i-h616-de33",
-				     "allwinner,sun50i-a64-de2";
-			reg = <0x1000000 0x400000>;
-			allwinner,sram = <&de3_sram 1>;
-			#address-cells = <1>;
-			#size-cells = <1>;
-			ranges = <0x0 0x1000000 0x400000>;
-
-			display_clocks: clock@8000 {
-				compatible = "allwinner,sun50i-h616-de33-clk";
-				reg = <0x8000 0x100>;
-				clocks = <&ccu 29>, <&ccu 30>;
-				clock-names = "mod", "bus";
-				resets = <&ccu 1>;
-				#clock-cells = <1>;
-				#reset-cells = <1>;
-			};
-
-			mixer0: mixer@100000 {
-				compatible = "allwinner,sun50i-h616-de33-mixer-0";
-				reg = <0x100000 0x100000>,
-				      <0x8100 0x40>,
-				      <0x280000 0x20000>;
-				clocks = <&display_clocks 0>, <&display_clocks 6>;
-				clock-names = "bus", "mod";
-				resets = <&display_clocks 0>;
-				iommus = <&iommu 0>;
-
-				ports {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					mixer0_out: port@1 {
-						reg = <1>;
-
-						mixer0_out_tcon_top_mixer0: endpoint {
-							remote-endpoint = <&tcon_top_mixer0_in_mixer0>;
-						};
-					};
-				};
-			};
-		};
-
-		codec: codec@05096000 {
-			#sound-dai-cells = <0>;
-			compatible = "allwinner,sun50i-h616-codec";
-			reg = <0x5096000 0x31c>;
-			interrupts = <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&ccu 93>, <&ccu 91>, <&ccu 92>;
-			clock-names = "apb", "audio-codec-1x", "audio-codec-4x";
-			resets = <&ccu 36>;
-			dmas = <&dma 6>;
-			dma-names = "tx";
-			status = "okay";
-			allwinner,audio-routing = "Line Out", "LINEOUT";
-		};
-
-		ahub_dam_plat: ahub_dam_plat@5097000 {
-			#sound-dai-cells = <0>;
-			compatible = "allwinner,sunxi-snd-plat-ahub_dam";
-			reg = <0x5097000 0x1000>;
-			resets = <&ccu 37>;
-			clocks = <&ccu 91>, <&ccu 92>,
-				 <&ccu 94>, <&ccu 95>;
-			clock-names = "clk_pll_audio", "clk_pll_audio_4x",
-				      "clk_audio_hub", "clk_bus_audio_hub";
-			status = "okay";
-		};
-
-		ahub_dam_mach {
-			compatible = "allwinner,sunxi-snd-mach";
-			soundcard-mach,name = "ahubdam";
-			status = "okay";
-
-			soundcard-mach,cpu {
-				sound-dai = <&ahub_dam_plat>;
-			};
-
-			soundcard-mach,codec {
-			};
-		};
-
-		ahub1_plat: ahub1_plat {
-			#sound-dai-cells = <0>;
-			compatible = "allwinner,sunxi-snd-plat-ahub";
-			apb_num = <1>;
-			dmas = <&dma 4>, <&dma 4>;
-			dma-names = "tx", "rx";
-			playback_cma = <128>;
-			capture_cma = <128>;
-			tx_fifo_size = <128>;
-			rx_fifo_size = <128>;
-			tdm_num = <1>;
-			tx_pin = <0>;
-			rx_pin = <0>;
-			status = "okay";
-		};
-
-		ahub1_mach {
-			compatible = "allwinner,sunxi-snd-mach";
-			soundcard-mach,name = "HDMI";
-			soundcard-mach,format = "i2s";
-			soundcard-mach,frame-master = <&ahub1_cpu>;
-			soundcard-mach,bitclock-master = <&ahub1_cpu>;
-			soundcard-mach,slot-num = <2>;
-			soundcard-mach,slot-width = <32>;
-			status = "okay";
-
-			ahub1_cpu: soundcard-mach,cpu {
-				sound-dai = <&ahub1_plat>;
-				soundcard-mach,pll-fs = <4>;
-				soundcard-mach,mclk-fs = <0>;
-			};
-
-			ahub1_codec: soundcard-mach,codec {
-				sound-dai = <&hdmi>;
-			};
-		};
-
-		hdmi: hdmi@6000000 {
-			#sound-dai-cells = <0>;
-			compatible = "allwinner,sun50i-h616-dw-hdmi",
-				     "allwinner,sun50i-h6-dw-hdmi";
-			reg = <0x6000000 0x10000>;
-			reg-io-width = <1>;
-			interrupts = <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&ccu 117>, <&ccu 115>,
-				 <&ccu 114>, <&ccu 116>,
-				 <&ccu 126>, <&ccu 127>;
-			clock-names = "iahb", "isfr", "tmds",
-				      "cec", "hdcp", "hdcp-bus";
-			resets = <&ccu 51>, <&ccu 58>;
-			reset-names = "ctrl", "hdcp";
-			phys = <&hdmi_phy>;
-			phy-names = "phy";
-			status = "okay";
-
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				hdmi_in: port@0 {
-					reg = <0>;
-
-					hdmi_in_tcon_top: endpoint {
-						remote-endpoint = <&tcon_top_hdmi_out_hdmi>;
-					};
-				};
-
-				hdmi_out: port@1 {
-					reg = <1>;
-
-					hdmi_out_con: endpoint {
-						remote-endpoint = <&hdmi_con_in>;
-					};
-				};
-			};
-		};
-
-		hdmi_phy: hdmi-phy@6010000 {
-			compatible = "allwinner,sun50i-h616-hdmi-phy";
-			reg = <0x6010000 0x10000>;
-			clocks = <&ccu 117>, <&ccu 115>;
-			clock-names = "bus", "mod";
-			resets = <&ccu 52>;
-			reset-names = "phy";
-			#phy-cells = <0>;
-		};
-
-		tcon_top: tcon-top@6510000 {
-			compatible = "allwinner,sun50i-h6-tcon-top";
-			reg = <0x6510000 0x1000>;
-			clocks = <&ccu 118>, <&ccu 119>;
-			clock-names = "bus", "tcon-tv0";
-			clock-output-names = "tcon-top-tv0";
-			resets = <&ccu 53>;
-			#clock-cells = <1>;
-
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				tcon_top_mixer0_in: port@0 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-					reg = <0>;
-
-					tcon_top_mixer0_in_mixer0: endpoint@0 {
-						reg = <0>;
-						remote-endpoint = <&mixer0_out_tcon_top_mixer0>;
-					};
-				};
-
-				tcon_top_mixer0_out: port@1 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-					reg = <1>;
-
-					tcon_top_mixer0_out_tcon_tv: endpoint@2 {
-						reg = <2>;
-						remote-endpoint = <&tcon_tv_in_tcon_top_mixer0>;
-					};
-				};
-
-				tcon_top_hdmi_in: port@4 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-					reg = <4>;
-
-					tcon_top_hdmi_in_tcon_tv: endpoint@0 {
-						reg = <0>;
-						remote-endpoint = <&tcon_tv_out_tcon_top>;
-					};
-				};
-
-				tcon_top_hdmi_out: port@5 {
-					reg = <5>;
-
-					tcon_top_hdmi_out_hdmi: endpoint {
-						remote-endpoint = <&hdmi_in_tcon_top>;
-					};
-				};
-			};
-		};
-
-		tcon_tv: lcd-controller@6515000 {
-			compatible = "allwinner,sun50i-h6-tcon-tv",
-				     "allwinner,sun8i-r40-tcon-tv";
-			reg = <0x6515000 0x1000>;
-			interrupts = <GIC_SPI 66 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&ccu 121>, <&tcon_top 0>;
-			clock-names = "ahb", "tcon-ch1";
-			resets = <&ccu 54>;
-			reset-names = "lcd";
-
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				tcon_tv_in: port@0 {
-					reg = <0>;
-
-					tcon_tv_in_tcon_top_mixer0: endpoint {
-						remote-endpoint = <&tcon_top_mixer0_out_tcon_tv>;
-					};
-				};
-
-				tcon_tv_out: port@1 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-					reg = <1>;
-
-					tcon_tv_out_tcon_top: endpoint@1 {
-						reg = <1>;
-						remote-endpoint = <&tcon_top_hdmi_in_tcon_tv>;
-					};
-				};
-			};
-		};
-
-		emac1: ethernet@5030000 {
-			compatible = "allwinner,sun50i-h616-emac0",
-				     "allwinner,sun50i-a64-emac";
-			reg = <0x5030000 0x10000>;
-			interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
-			resets = <&ccu 31>;
-			reset-names = "stmmaceth";
-			clocks = <&ccu 83>;
-			clock-names = "stmmaceth";
-			syscon = <&syscon 1>;
-			status = "disabled";
-
-			mdio1: mdio {
-				compatible = "snps,dwmac-mdio";
-				#address-cells = <1>;
-				#size-cells = <0>;
-				status = "disabled";
-			};
-		};
-
-		video-codec@1c0e000 {
-			compatible = "allwinner,sun50i-h616-video-engine";
-			reg = <0x1c0e000 0x2000>;
-			clocks = <&ccu 41>, <&ccu 40>, <&ccu 51>;
-			clock-names = "ahb", "mod", "ram";
-			resets = <&ccu 5>;
-			interrupts = <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>;
-			allwinner,sram = <&ve_sram 1>;
-			iommus = <&iommu 2>, <&iommu 3>;
-		};
-
-		sunxi-info {
-			compatible = "allwinner,sun50i-h6-sys-info";
-			status = "okay";
-		};
-
-		addr_mgt: addr-mgt {
-			compatible = "allwinner,sunxi-addr_mgt";
-			type_addr_wifi = <2>;
-			type_addr_bt = <2>;
-			type_addr_eth = <2>;
-			status = "okay";
-		};
-
-		dump_reg: dump_reg@20000 {
-			compatible = "allwinner,sunxi-dump-reg";
-			reg = <0x0 0x3001000 0x0 0xf20>;
-			status = "okay";
-		};
-	};
-};
-
-/* Add sram children to syscon */
-&syscon {
-	sram_a2: sram@100000 {
-		compatible = "mmio-sram";
-		reg = <0x100000 0x18000>;
-		#address-cells = <1>;
-		#size-cells = <1>;
-		ranges = <0 0x100000 0x18000>;
-
-		scpi_sram: scpi-sram@17c00 {
-			compatible = "arm,scp-shmem";
-			reg = <0x17c00 0x200>;
-		};
-	};
-
-	sram_c1: sram@1a00000 {
-		compatible = "mmio-sram";
-		reg = <0x1a00000 0x200000>;
-		#address-cells = <1>;
-		#size-cells = <1>;
-		ranges = <0 0x1a00000 0x200000>;
-
-		ve_sram: sram-section@0 {
-			compatible = "allwinner,sun50i-h616-sram-c1";
-			reg = <0x0 0x200000>;
-		};
-	};
-};
-
-&gpu {
-	mali-supply = <&reg_dcdc1>;
-	operating-points-v2 = <&gpu_opp_table>;
-	#cooling-cells = <2>;
-	status = "okay";
-};
-
-/* Add sram-section to existing sram_c */
-&sram_c {
-	de3_sram: sram-section@0 {
-		compatible = "allwinner,sun50i-h616-sram-c",
-			     "allwinner,sun50i-a64-sram-c";
-		reg = <0x0 0x1e000>;
-	};
-};
-
 &cpu0 {
 	cpu-supply = <&reg_dcdc2>;
 	clock-latency-ns = <244000>;
@@ -471,6 +97,32 @@
 	clock-latency-ns = <244000>;
 };
 
+/* Display Engine */
+&de {
+	status = "okay";
+};
+
+/* HDMI output */
+&hdmi {
+	hvcc-supply = <&reg_aldo1>;
+	status = "okay";
+};
+
+&hdmi_out {
+	hdmi_out_con: endpoint {
+		remote-endpoint = <&hdmi_con_in>;
+	};
+};
+
+/* GPU */
+&gpu {
+	mali-supply = <&reg_dcdc1>;
+	operating-points-v2 = <&gpu_opp_table>;
+	#cooling-cells = <2>;
+	status = "okay";
+};
+
+/* USB */
 &ehci0 {
 	status = "okay";
 };
@@ -483,43 +135,65 @@
 	status = "okay";
 };
 
-&emac0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&ext_rgmii_pins>;
-	phy-mode = "rgmii";
-	phy-handle = <&ext_rgmii_phy>;
-	phy-io-supply = <&reg_aldo1>;
-	allwinner,rx-delay-ps = <3100>;
-	allwinner,tx-delay-ps = <700>;
+&ohci0 {
 	status = "okay";
 };
 
-/* Board uses PI0-PI15 (including PI6, excluding PI16) for RGMII */
+&ohci1 {
+	status = "okay";
+};
+
+&ohci2 {
+	status = "okay";
+};
+
+&usbotg {
+	dr_mode = "host";
+	status = "okay";
+};
+
+&usbphy {
+	status = "okay";
+};
+
+/* Ethernet - board uses PI0-PI15 (including PI6) for RGMII */
+&emac0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&ext_rgmii_pins>;
+	phy-mode = "rgmii-id";
+	phy-handle = <&ext_rgmii_phy>;
+	phy-supply = <&reg_dldo1>;
+	status = "okay";
+};
+
+/* Override dtsi default to include PI6 (EMAC0_TXCLK) needed by this board */
 &ext_rgmii_pins {
 	pins = "PI0", "PI1", "PI2", "PI3", "PI4", "PI5", "PI6",
 	       "PI7", "PI8", "PI9", "PI10", "PI11", "PI12",
 	       "PI13", "PI14", "PI15";
-	drive-strength = <40>;
-};
-
-&i2c3 {
-	status = "okay";
-};
-
-&ir {
-	status = "okay";
 };
 
 &mdio0 {
 	ext_rgmii_phy: ethernet-phy@1 {
 		compatible = "ethernet-phy-ieee802.3-c22";
 		reg = <1>;
-		reset-gpios = <&pio 8 16 1>;
+		reset-gpios = <&pio 8 16 GPIO_ACTIVE_LOW>;	/* PI16 */
 		reset-assert-us = <30000>;
 		reset-deassert-us = <150000>;
 	};
 };
 
+/* I2C */
+&i2c3 {
+	status = "okay";
+};
+
+/* IR */
+&ir {
+	status = "okay";
+};
+
+/* Storage */
 &mmc0 {
 	vmmc-supply = <&reg_dldo1>;
 	cd-gpios = <&pio 5 6 (GPIO_ACTIVE_LOW | GPIO_PULL_DOWN)>;	/* PF6 */
@@ -538,32 +212,15 @@
 	status = "okay";
 };
 
-&ohci0 {
-	status = "okay";
-};
-
-&ohci1 {
-	status = "okay";
-};
-
-&ohci2 {
-	status = "okay";
-};
-
+/* Pin power domains */
 &pio {
 	vcc-pc-supply = <&reg_aldo1>;
 	vcc-pg-supply = <&reg_dldo1>;
 	vcc-ph-supply = <&reg_dldo1>;
 	vcc-pi-supply = <&reg_dldo1>;
-
-	rmii_pins: rmii-pins {
-		pins = "PA0", "PA1", "PA2", "PA3", "PA4",
-		       "PA5", "PA6", "PA7", "PA8", "PA9";
-		function = "emac1";
-		drive-strength = <40>;
-	};
 };
 
+/* PMIC */
 &r_i2c {
 	status = "okay";
 
@@ -616,6 +273,29 @@
 	};
 };
 
+/* Audio */
+&codec {
+	allwinner,audio-routing = "Line Out", "LINEOUT";
+	status = "okay";
+};
+
+&ahub_dam_plat {
+	status = "okay";
+};
+
+&ahub_dam_mach {
+	status = "okay";
+};
+
+&ahub1_plat {
+	status = "okay";
+};
+
+&ahub1_mach {
+	status = "okay";
+};
+
+/* UART */
 &uart0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart0_ph_pins>;
@@ -639,13 +319,4 @@
 		device-wakeup-gpios = <&pio 6 17 GPIO_ACTIVE_HIGH>; /* PG17 */
 		host-wakeup-gpios   = <&pio 6 16 GPIO_ACTIVE_HIGH>; /* PG16 */
 	};
-};
-
-&usbotg {
-	dr_mode = "host";
-	status = "okay";
-};
-
-&usbphy {
-	status = "okay";
 };
