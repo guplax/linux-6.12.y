@@ -24,7 +24,7 @@
 	chosen {
 		stdout-path = "serial0:115200n8";
 	};
-	
+
 	connector {
 		compatible = "hdmi-connector";
 		type = "a";
@@ -98,13 +98,18 @@
 };
 
 &emac1 {
+	/* Override compatible to use a64 variant (default_syscon_value=0)
+	 * instead of h616-emac variant (default_syscon_value=0x50000)
+	 * which sets H3_EPHY_SHUTDOWN and kills the internal 100M PHY.
+	 * Keep syscon index 1 so EMAC1 phase register is still addressed.
+	 */
+	compatible = "allwinner,sun50i-h616-emac0",
+		     "allwinner,sun50i-a64-emac";
+	syscon = <&syscon 1>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&rmii_pins>;
 	phy-mode = "rmii";
 	phy-handle = <&rmii_phy>;
-	phy-supply = <&reg_aldo1>;
-	allwinner,rx-delay-ps = <3100>;
-	allwinner,tx-delay-ps = <700>;
 	status = "okay";
 };
 
@@ -114,6 +119,7 @@
 };
 
 &hdmi {
+	hvcc-supply = <&reg_aldo1>;
 	status = "okay";
 };
 
@@ -136,9 +142,9 @@
 };
 
 &mdio1 {
-	rmii_phy: ethernet-phy@0 {
+	rmii_phy: ethernet-phy@1 {
 		compatible = "ethernet-phy-ieee802.3-c22";
-		reg = <0>;
+		reg = <1>;
 	};
 };
 
@@ -286,7 +292,6 @@
 &ehci2 {
 	status = "okay";
 };
-
 
 &ohci0 {
 	status = "okay";
