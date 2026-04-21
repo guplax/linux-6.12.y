@@ -15,7 +15,7 @@
 
 		green_led {
 			label = "green";
-			gpios = <&gpio_ao GPIOAO_5 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio_ao GPIOAO_9 GPIO_ACTIVE_HIGH>;
 			linux,default-trigger = "usb-host";
 		};
 
@@ -28,7 +28,7 @@
 
 		red_led {
 			label = "red";
-			gpios = <&gpio_ao GPIOAO_9 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio_ao GPIOAO_5 GPIO_ACTIVE_HIGH>;
 			default-state = "on";
 		};
 
